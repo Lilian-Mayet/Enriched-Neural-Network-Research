@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import random as rd
 
 class VectorizedNeuralNetwork:
     def __init__(self, layer_sizes):
@@ -10,6 +11,8 @@ class VectorizedNeuralNetwork:
         self.manual_weights = []
 
     def sigmoid(self, z):
+        z = np.clip(z, -50, 50)
+
         return 1 / (1 + np.exp(-z))
 
     def sigmoid_derivative(self, a):
@@ -17,9 +20,18 @@ class VectorizedNeuralNetwork:
 
     def add_manual_connection(self, from_layer, from_index, to_layer, to_index, weight=None):
         if weight is None:
-            weight = np.random.randn() * 0.01
+            weight = np.random.randn() * 0.001
         self.manual_connections.append((from_layer, from_index, to_layer, to_index))
         self.manual_weights.append(weight)
+
+    def generate_random_manual_connections(self, num_connections):
+        for _ in range(num_connections):
+            from_layer = rd.randint(0, len(self.layer_sizes) - 2)
+            to_layer = rd.randint(from_layer + 1, len(self.layer_sizes) - 1)
+            from_index = rd.randint(0, self.layer_sizes[from_layer] - 1)
+            to_index = rd.randint(0, self.layer_sizes[to_layer] - 1)
+            print(from_layer,from_index,to_layer,to_index)
+            self.add_manual_connection(from_layer, from_index, to_layer, to_index)
 
     def forward(self, x):
         activations = [x]
@@ -31,8 +43,12 @@ class VectorizedNeuralNetwork:
 
         # Apply manual connections
         for i, (from_l, from_i, to_l, to_i) in enumerate(self.manual_connections):
-            w = self.manual_weights[i]
-            activations[to_l][to_i] += activations[from_l][from_i] * w
+            if from_i < self.layer_sizes[from_l] and to_i < self.layer_sizes[to_l]:
+                w = self.manual_weights[i]
+                value = activations[from_l][from_i] * w
+                value = np.clip(value, -10, 10)
+                activations[to_l][to_i] += value
+
 
         return activations, zs
 
@@ -53,9 +69,10 @@ class VectorizedNeuralNetwork:
 
         # Gradients for manual connections
         for i, (from_l, from_i, to_l, to_i) in enumerate(self.manual_connections):
-            error = (activations[-1] - y)
-            grad = error[to_i] * self.sigmoid_derivative(activations[to_l][to_i]) * activations[from_l][from_i]
-            grads_manual[i] = grad
+            if to_l == len(activations) - 1 and to_i < activations[to_l].shape[0]:
+                error = (activations[to_l] - y)
+                grad = error[to_i] * self.sigmoid_derivative(activations[to_l][to_i]) * activations[from_l][from_i]
+                grads_manual[i] = grad
 
         return grads_w, grads_b, grads_manual
 
@@ -66,7 +83,7 @@ class VectorizedNeuralNetwork:
         for i in range(len(self.manual_weights)):
             self.manual_weights[i] -= lr * grads_manual[i]
 
-    def train(self, X, Y, epochs=10, lr=0.01, batch_size=32,lr_decay=1):
+    def train(self, X, Y, epochs=10, lr=0.01,lr_decay=1, batch_size=32):
         n = X.shape[0]
         for epoch in range(epochs):
             perm = np.random.permutation(n)

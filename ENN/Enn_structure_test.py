@@ -29,8 +29,8 @@ X, Y = load_mnist_data("dataset/train.csv")
 X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2, )
 
 # Create and train model
-nn = VectorizedNeuralNetwork([784, 64, 10])
-
+nn = VectorizedNeuralNetwork([784,128, 64, 10])
+#nn.generate_random_manual_connections(5)
 # Add manual connection from input neuron 100 to output neuron 5
 #nn.add_manual_connection(from_layer=0, from_index=100, to_layer=2, to_index=5, weight=0.05)
 
