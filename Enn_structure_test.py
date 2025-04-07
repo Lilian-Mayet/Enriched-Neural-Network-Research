@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 
 class Neuron:
     def __init__(self, layer_index, neuron_index):
@@ -32,26 +33,21 @@ class CustomNeuralNetwork:
         self.forward_links.setdefault((from_layer, to_layer), []).append((from_neuron, to_neuron, weight))
 
     def forward_pass(self, input_vector):
-        # Set activations of input layer
         for i, val in enumerate(input_vector):
             self.layers[0][i].activation = val
 
-        # Go layer by layer
         for l in range(1, len(self.layers)):
             for neuron in self.layers[l]:
                 total_input = sum(prev_neuron.activation * weight for prev_neuron, weight in neuron.incoming)
                 neuron.activate(total_input)
 
-        # Return activations of output layer
         return [neuron.activation for neuron in self.layers[-1]]
 
     def backpropagate(self, target_output):
-        # Implement a custom backpropagation algorithm
-        pass
+        pass  # À implémenter
 
     def update_weights(self, learning_rate):
-        # Implement weight update logic, possibly differentiating between classic and long-range connections
-        pass
+        pass  # À implémenter
 
     def train(self, training_data, epochs, learning_rate):
         for epoch in range(epochs):
@@ -60,19 +56,47 @@ class CustomNeuralNetwork:
                 self.backpropagate(target_output)
                 self.update_weights(learning_rate)
 
+    def predict(self, input_vector):
+        output = self.forward_pass(input_vector)
+        return np.argmax(output)
 
-# Example of use:
-# Create a network with 3 layers: input(3), hidden(5), output(2)
-nn = CustomNeuralNetwork([3, 5, 2])
 
-# Add long-range connection from input layer to output layer
-nn.add_forward_connection(0, 1, 2, 0, weight=0.1)  # from neuron 1 of layer 0 to neuron 0 of layer 2
+def load_mnist_data(path):
+    df = pd.read_csv(path)
+    X = df.drop('label', axis=1).values.astype(np.float32)
+    y = df['label'].values
 
-# Placeholder for training data
-data = [
-    ([0.5, 0.3, 0.9], [1, 0]),
-    ([0.1, 0.4, 0.6], [0, 1])
-]
+    X /= 1.0  # Les pixels sont déjà entre 0 et 1
 
-# Train the network
-nn.train(data, epochs=10, learning_rate=0.01)
+    # One-hot encoding
+    Y = np.zeros((y.size, 10))
+    Y[np.arange(y.size), y] = 1
+
+    return list(zip(X, Y))
+
+
+def evaluate_model(model, test_data):
+    correct = 0
+    for input_vector, target_output in test_data:
+        prediction = model.predict(input_vector)
+        if prediction == np.argmax(target_output):
+            correct += 1
+    accuracy = correct / len(test_data)
+    print(f"Accuracy: {accuracy:.2f}")
+
+
+# Chargement des données MNIST
+train_data = load_mnist_data("dataset/train.csv")
+test_data = load_mnist_data("dataset/test.csv")
+
+# Création du réseau : 784 entrées (pixels), 64 neurones cachés, 10 sorties (chiffres)
+nn = CustomNeuralNetwork([784,258,128, 64, 10])
+
+# Exemple de connexion longue portée
+nn.add_forward_connection(0, 10, 2, 5, weight=0.05)  # de l'entrée 10 à la sortie 5
+
+# Entraînement
+nn.train(train_data[:1000], epochs=5, learning_rate=0.01)  # Sous-échantillon pour aller plus vite
+
+# Évaluation
+evaluate_model(nn, test_data[:500])
